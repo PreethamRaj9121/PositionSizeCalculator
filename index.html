@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Position Size Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for risk assessment feedback */
+        .risk-low { background-color: #dcfce7; color: #166534; } /* Green */
+        .risk-medium { background-color: #fef9c3; color: #854d0e; } /* Yellow */
+        .risk-high { background-color: #fee2e2; color: #991b1b; } /* Red */
+        
+        /* General styling for result cards */
+        .result-card { background-color: #f8fafc; border: 1px solid #e2e8f0; }
+
+        /* Style for the delete button in the table */
+        .delete-btn {
+            background-color: #ef4444; /* red-500 */
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            line-height: 1rem;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .delete-btn:hover {
+            background-color: #dc2626; /* red-600 */
+        }
+        
+        /* Style for disabled buttons */
+        button:disabled {
+            background-color: #94a3b8; /* slate-400 */
+            cursor: not-allowed;
+        }
+        button:disabled:hover {
+            background-color: #94a3b8; /* slate-400 */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 md:p-8">
+
+<div class="max-w-7xl mx-auto">
+    <h1 class="text-3xl font-bold text-center mb-8 text-gray-800">Trade Position Size Calculator</h1>
+
+    <div class="calculator-container bg-white p-6 rounded-lg shadow-lg">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Input Column -->
+            <div>
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">Input Parameters</h2>
+                <div class="space-y-4" id="input-form">
+                    <div>
+                        <label for="stockName" class="block text-sm font-medium text-gray-700 mb-1">Stock Name</label>
+                        <input type="text" id="stockName" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="E.g. RELIANCE">
+                    </div>
+                    <div>
+                        <label for="entryPrice" class="block text-sm font-medium text-gray-700 mb-1">Entry Price (₹)</label>
+                        <input type="number" id="entryPrice" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="E.g. 150.50" step="0.01">
+                    </div>
+                    <div>
+                        <label for="stopLoss" class="block text-sm font-medium text-gray-700 mb-1">Stop Loss Price (₹)</label>
+                        <input type="number" id="stopLoss" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="E.g. 140.25" step="0.01">
+                    </div>
+                    <div>
+                        <label for="riskAmount" class="block text-sm font-medium text-gray-700 mb-1">Amount to Risk (₹)</label>
+                        <input type="number" id="riskAmount" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="E.g. 5000" step="1">
+                    </div>
+                    <div>
+                        <label for="targetPrice" class="block text-sm font-medium text-gray-700 mb-1">Target Price (₹)</label>
+                        <input type="number" id="targetPrice" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="E.g. 180.00" step="0.01">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <button onclick="calculatePosition()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-200">
+                            Calculate Position
+                        </button>
+                        <button id="addBtn" onclick="logTrade()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition duration-200" disabled>
+                            Add to Plan
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Column -->
+            <div>
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">Calculation Results</h2>
+                <div class="space-y-3">
+                    <div class="result-card p-4 rounded-lg">
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-700 font-medium">Position Quantity:</span>
+                            <span id="positionQuantity" class="text-xl font-bold text-gray-900">--</span>
+                        </div>
+                    </div>
+                    <div class="result-card p-4 rounded-lg">
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-700 font-medium">Capital Required (₹):</span>
+                            <span id="capitalRequired" class="text-xl font-bold text-gray-900">--</span>
+                        </div>
+                    </div>
+                    <div class="result-card p-4 rounded-lg">
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-700 font-medium">Risk-to-Reward:</span>
+                            <span id="riskReward" class="text-xl font-bold text-gray-900">--</span>
+                        </div>
+                    </div>
+                    <div class="result-card p-4 rounded-lg">
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-700 font-medium">Potential Profit (₹):</span>
+                            <span id="potentialProfit" class="text-xl font-bold text-gray-900">--</span>
+                        </div>
+                    </div>
+                    <div class="result-card p-4 rounded-lg">
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-700 font-medium">Potential Loss (₹):</span>
+                            <span id="potentialLoss" class="text-xl font-bold text-gray-900">--</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-6">
+                    <h3 class="text-lg font-semibold mb-2 text-gray-700">Risk Assessment</h3>
+                    <div id="riskAssessment" class="p-4 rounded-lg text-center font-medium bg-gray-100">
+                        Enter trade parameters to see risk assessment.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Planned Trades Table -->
+    <div class="mt-10">
+        <h2 class="text-2xl font-semibold mb-4 text-gray-800">Planned Trades</h2>
+        <div class="overflow-x-auto bg-white rounded-lg shadow-md">
+            <table class="w-full text-sm text-left text-gray-600">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-4 py-3">Stock</th>
+                        <th scope="col" class="px-4 py-3">Entry (₹)</th>
+                        <th scope="col" class="px-4 py-3">Stop Loss (₹)</th>
+                        <th scope="col" class="px-4 py-3">Target (₹)</th>
+                        <th scope="col" class="px-4 py-3">Quantity</th>
+                        <th scope="col" class="px-4 py-3">Capital Req. (₹)</th>
+                        <th scope="col" class="px-4 py-3">R:R</th>
+                        <th scope="col" class="px-4 py-3">Profit Pot. (₹)</th>
+                        <th scope="col" class="px-4 py-3">Loss Pot. (₹)</th>
+                        <th scope="col" class="px-4 py-3 text-center">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="tradeLogBody">
+                    <!-- Rows will be dynamically inserted here by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // --- NEW: Global state and constants for localStorage ---
+    const STORAGE_KEY = 'plannedTradesData';
+    let trades = []; // This array will be the single source of truth for our trades.
+    let currentTradeData = null; // Holds the data from the last successful calculation
+
+    const addBtn = document.getElementById('addBtn');
+    
+    // --- NEW: Event listener to load data when the page is ready ---
+    document.addEventListener('DOMContentLoaded', loadTrades);
+    document.getElementById('input-form').addEventListener('input', handleInputChange);
+
+    function handleInputChange() {
+        addBtn.disabled = true;
+        currentTradeData = null;
+    }
+    
+    function resetResultsUI() {
+        document.getElementById('positionQuantity').textContent = '--';
+        document.getElementById('capitalRequired').textContent = '--';
+        document.getElementById('riskReward').textContent = '--';
+        document.getElementById('potentialProfit').textContent = '--';
+        document.getElementById('potentialLoss').textContent = '--';
+        const riskElement = document.getElementById('riskAssessment');
+        riskElement.textContent = 'Enter trade parameters to see risk assessment.';
+        riskElement.className = 'p-4 rounded-lg text-center font-medium bg-gray-100';
+    }
+
+    function formatCurrency(value) {
+        return value.toLocaleString('en-IN', { maximumFractionDigits: 2, minimumFractionDigits: 2 });
+    }
+
+    function calculatePosition() {
+        const stockName = document.getElementById('stockName').value.trim().toUpperCase();
+        const entryPrice = parseFloat(document.getElementById('entryPrice').value);
+        const stopLoss = parseFloat(document.getElementById('stopLoss').value);
+        const riskAmount = parseFloat(document.getElementById('riskAmount').value);
+        const targetPrice = parseFloat(document.getElementById('targetPrice').value);
+        
+        addBtn.disabled = true;
+        currentTradeData = null;
+        resetResultsUI();
+
+        if (!stockName) {
+            alert('Please enter a Stock Name.');
+            return;
+        }
+        if (isNaN(entryPrice) || isNaN(stopLoss) || isNaN(riskAmount) || isNaN(targetPrice)) {
+            alert('Please fill in all numeric fields with valid numbers.');
+            return;
+        }
+        if (entryPrice <= 0 || stopLoss <= 0 || riskAmount <= 0 || targetPrice <= 0) {
+            alert('All price and risk amount values must be greater than zero.');
+            return;
+        }
+        if (stopLoss >= entryPrice) {
+            alert('Stop Loss must be below the Entry Price for a long position.');
+            return;
+        }
+        if (targetPrice <= entryPrice) {
+            alert('Target Price must be above the Entry Price for a long position.');
+            return;
+        }
+        
+        const riskPerShare = entryPrice - stopLoss;
+        if (riskPerShare <= 0) return;
+        
+        const positionQuantity = Math.floor(riskAmount / riskPerShare);
+        
+        if (positionQuantity === 0) {
+            alert(`The risk amount (₹${formatCurrency(riskAmount)}) is too small for the risk per share (₹${formatCurrency(riskPerShare)}). You cannot buy any shares.`);
+            return;
+        }
+
+        const capitalRequired = positionQuantity * entryPrice;
+        const potentialLoss = positionQuantity * riskPerShare;
+        const potentialProfit = positionQuantity * (targetPrice - entryPrice);
+        const riskToRewardRatio = (targetPrice - entryPrice) / riskPerShare;
+        
+        currentTradeData = {
+            stockName, entryPrice, stopLoss, targetPrice, positionQuantity,
+            capitalRequired, riskToRewardRatio, potentialProfit, potentialLoss
+        };
+
+        document.getElementById('positionQuantity').textContent = positionQuantity;
+        document.getElementById('capitalRequired').textContent = `₹${formatCurrency(capitalRequired)}`;
+        document.getElementById('riskReward').textContent = `1 : ${riskToRewardRatio.toFixed(2)}`;
+        document.getElementById('potentialProfit').textContent = `₹${formatCurrency(potentialProfit)}`;
+        document.getElementById('potentialLoss').textContent = `₹${formatCurrency(potentialLoss)}`;
+        
+        let riskAssessmentText = '';
+        let riskClass = '';
+        if (riskToRewardRatio < 1) {
+            riskAssessmentText = 'Poor R:R - Potential loss is greater than potential profit.';
+            riskClass = 'risk-high';
+        } else if (riskToRewardRatio < 2) {
+            riskAssessmentText = 'Decent R:R - Consider if the trade aligns with your strategy.';
+            riskClass = 'risk-medium';
+        } else {
+            riskAssessmentText = 'Good R:R - Potential profit is favorable compared to risk.';
+            riskClass = 'risk-low';
+        }
+        const riskElement = document.getElementById('riskAssessment');
+        riskElement.textContent = riskAssessmentText;
+        riskElement.className = `p-4 rounded-lg text-center font-medium ${riskClass}`;
+
+        addBtn.disabled = false;
+    }
+
+    // --- MODIFIED: logTrade now updates the central `trades` array and calls render/save functions ---
+    function logTrade() {
+        if (!currentTradeData) {
+            alert("Please calculate a position first before adding it to the plan.");
+            return;
+        }
+
+        // Add the new trade to our central array
+        trades.push(currentTradeData);
+        
+        // Save the updated array to localStorage and re-render the table
+        saveTrades();
+        renderTrades();
+
+        // Reset state and form after adding
+        currentTradeData = null;
+        addBtn.disabled = true;
+        document.getElementById('input-form').reset();
+        resetResultsUI();
+        document.getElementById('stockName').focus();
+    }
+
+    // --- MODIFIED: deleteTrade now works with an index, updates the central array, and saves ---
+    function deleteTrade(index) {
+        // Remove the trade from the array at the specified index
+        trades.splice(index, 1);
+        
+        // Save the modified array and re-render the table
+        saveTrades();
+        renderTrades();
+    }
+
+    // --- NEW: Function to render the entire trade table from the `trades` array ---
+    function renderTrades() {
+        const tradeLogBody = document.getElementById('tradeLogBody');
+        tradeLogBody.innerHTML = ''; // Clear the existing table body
+
+        if (trades.length === 0) {
+            tradeLogBody.innerHTML = `
+                <tr id="no-trades-row">
+                   <td colspan="10" class="px-6 py-8 text-center text-gray-500">No trades planned yet. Use the calculator above.</td>
+                </tr>`;
+        } else {
+            trades.forEach((trade, index) => {
+                const newRow = document.createElement('tr');
+                newRow.className = 'bg-white border-b hover:bg-gray-50';
+                newRow.innerHTML = `
+                    <td class="px-4 py-4 font-medium text-gray-900 whitespace-nowrap">${trade.stockName}</td>
+                    <td class="px-4 py-4">${formatCurrency(trade.entryPrice)}</td>
+                    <td class="px-4 py-4">${formatCurrency(trade.stopLoss)}</td>
+                    <td class="px-4 py-4">${formatCurrency(trade.targetPrice)}</td>
+                    <td class="px-4 py-4 font-bold">${trade.positionQuantity}</td>
+                    <td class="px-4 py-4">${formatCurrency(trade.capitalRequired)}</td>
+                    <td class="px-4 py-4">1 : ${trade.riskToRewardRatio.toFixed(2)}</td>
+                    <td class="px-4 py-4 text-green-600 font-medium">${formatCurrency(trade.potentialProfit)}</td>
+                    <td class="px-4 py-4 text-red-600 font-medium">${formatCurrency(trade.potentialLoss)}</td>
+                    <td class="px-4 py-4 text-center">
+                        <button onclick="deleteTrade(${index})" class="delete-btn">Delete</button>
+                    </td>
+                `;
+                tradeLogBody.appendChild(newRow);
+            });
+        }
+    }
+
+    // --- NEW: Function to save the `trades` array to localStorage ---
+    function saveTrades() {
+        // localStorage can only store strings, so we convert our array to a JSON string
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(trades));
+    }
+
+    // --- NEW: Function to load trades from localStorage when the page opens ---
+    function loadTrades() {
+        const savedTrades = localStorage.getItem(STORAGE_KEY);
+        if (savedTrades) {
+            // If we found saved data, parse it from a JSON string back into an array
+            trades = JSON.parse(savedTrades);
+        }
+        // Render the trades (either the loaded ones or an empty table)
+        renderTrades();
+    }
+
+</script>
+
+</body>
+</html>
